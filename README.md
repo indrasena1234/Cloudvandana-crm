@@ -1,16 +1,39 @@
-# React + Vite
+# CloudVandana CRM Application
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Project Overview
+A web-based CRM application integrated with Salesforce to manage business records.
 
-Currently, two official plugins are available:
+## Technologies Used
+- React.js
+- Node.js
+- Express.js
+- Salesforce
+- JavaScript
+- CSS
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Features
+- Salesforce OAuth Authentication
+- Create Records
+- View Records
+- Update Records
+- Delete Records
+- Manage Account, Opportunity, Lead, Contact and Case objects.
 
-## React Compiler
+## How to Run
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Backend
+1. Open the server folder.
+2. Run `npm install`.
+3. Configure Salesforce credentials in the `.env` file.
+4. Run `node server.js`.
 
-## Expanding the ESLint configuration
+### Frontend
+1. Open the project root folder.
+2. Run `npm install`.
+3. Run `npm run dev`.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Security
+Salesforce credentials are stored in the `.env` file. Do not upload this file to GitHub.
+
+## Project
+CloudVandana Assignment
