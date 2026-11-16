@@ -174,7 +174,7 @@ app.delete('/api/accounts/:id', async (req, res) => {
 })
 
 // Start Server
-const PORT = 5000
+const PORT = process.env.PORT || 5000
 // GET - Read Opportunities
 app.get('/api/opportunities', async (req, res) => {
   try {
