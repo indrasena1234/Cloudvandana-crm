@@ -19,6 +19,63 @@ const oauth2 = new jsforce.OAuth2({
 
 let salesforceConnection = null
 
+// Pagination helper: 20 records per page
+function getPagination(req, res) {
+  const requestedPage = parseInt(req.query.page, 10)
+  const page = Number.isInteger(requestedPage) && requestedPage > 0
+    ? requestedPage
+    : 1
+
+  if (page > 100) {
+    res.status(400).json({
+      success: false,
+      message: 'Maximum page limit reached'
+    })
+    return null
+  }
+
+  return {
+    page,
+    offset: (page - 1) * 20
+  }
+}
+
+// Read records with pagination
+async function readRecords(req, res, objectName, fields) {
+  try {
+    if (!salesforceConnection) {
+      return res.status(401).json({
+        success: false,
+        message: 'Please connect Salesforce first'
+      })
+    }
+
+    const pagination = getPagination(req, res)
+    if (!pagination) return
+
+    const { page, offset } = pagination
+
+    const query = `SELECT ${fields} FROM ${objectName} ORDER BY CreatedDate DESC LIMIT 21 OFFSET ${offset}`
+
+    const result = await salesforceConnection.query(query)
+
+    const hasMore = result.records.length > 20
+    const records = result.records.slice(0, 20)
+
+    res.json({
+      success: true,
+      records,
+      page,
+      hasMore
+    })
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    })
+  }
+}
+
 // Home
 app.get('/', (req, res) => {
   res.send('CloudVandana Backend is Running!')
@@ -62,33 +119,21 @@ app.get('/oauth/callback', async (req, res) => {
   }
 })
 
-// GET - Read Accounts
-app.get('/api/accounts', async (req, res) => {
-  try {
-    if (!salesforceConnection) {
-      return res.status(401).json({
-        success: false,
-        message: 'Please connect Salesforce first'
-      })
-    }
+// ==============================
+// ACCOUNT CRUD
+// ==============================
 
-    const result = await salesforceConnection.query(
-      'SELECT Id, Name, Type, Industry, Phone FROM Account ORDER BY CreatedDate DESC LIMIT 20'
-    )
-
-    res.json({
-      success: true,
-      records: result.records
-    })
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    })
-  }
+// GET Accounts
+app.get('/api/accounts', (req, res) => {
+  return readRecords(
+    req,
+    res,
+    'Account',
+    'Id, Name, Type, Industry, Phone'
+  )
 })
 
-// POST - Create Account
+// CREATE Account
 app.post('/api/accounts', async (req, res) => {
   try {
     if (!salesforceConnection) {
@@ -104,19 +149,13 @@ app.post('/api/accounts', async (req, res) => {
       Industry: req.body.Industry
     })
 
-    res.json({
-      success: true,
-      result: result
-    })
+    res.json({ success: result.success, result })
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    })
+    res.status(500).json({ success: false, message: error.message })
   }
 })
 
-// PUT - Update Account
+// UPDATE Account
 app.put('/api/accounts/:id', async (req, res) => {
   try {
     if (!salesforceConnection) {
@@ -126,28 +165,20 @@ app.put('/api/accounts/:id', async (req, res) => {
       })
     }
 
-    const result = await salesforceConnection
-      .sobject('Account')
-      .update({
-        Id: req.params.id,
-        Name: req.body.Name,
-        Phone: req.body.Phone,
-        Industry: req.body.Industry
-      })
+    const result = await salesforceConnection.sobject('Account').update({
+      Id: req.params.id,
+      Name: req.body.Name,
+      Phone: req.body.Phone,
+      Industry: req.body.Industry
+    })
 
-    res.json({
-      success: result.success,
-      result: result
-    })
+    res.json({ success: result.success, result })
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    })
+    res.status(500).json({ success: false, message: error.message })
   }
 })
 
-// DELETE - Delete Account
+// DELETE Account
 app.delete('/api/accounts/:id', async (req, res) => {
   try {
     if (!salesforceConnection) {
@@ -161,47 +192,27 @@ app.delete('/api/accounts/:id', async (req, res) => {
       .sobject('Account')
       .destroy(req.params.id)
 
-    res.json({
-      success: result.success,
-      result: result
-    })
+    res.json({ success: result.success, result })
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    })
+    res.status(500).json({ success: false, message: error.message })
   }
 })
 
-// Start Server
-const PORT = process.env.PORT || 5000
-// GET - Read Opportunities
-app.get('/api/opportunities', async (req, res) => {
-  try {
-    if (!salesforceConnection) {
-      return res.status(401).json({
-        success: false,
-        message: 'Please connect Salesforce first'
-      })
-    }
+// ==============================
+// OPPORTUNITY CRUD
+// ==============================
 
-    const result = await salesforceConnection.query(
-      'SELECT Id, Name, StageName, CloseDate, Amount FROM Opportunity ORDER BY CreatedDate DESC LIMIT 20'
-    )
-
-    res.json({
-      success: true,
-      records: result.records
-    })
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    })
-  }
+// GET Opportunities
+app.get('/api/opportunities', (req, res) => {
+  return readRecords(
+    req,
+    res,
+    'Opportunity',
+    'Id, Name, StageName, CloseDate, Amount'
+  )
 })
 
-// POST - Create Opportunity
+// CREATE Opportunity
 app.post('/api/opportunities', async (req, res) => {
   try {
     if (!salesforceConnection) {
@@ -220,14 +231,11 @@ app.post('/api/opportunities', async (req, res) => {
 
     res.json({ success: result.success, result })
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    })
+    res.status(500).json({ success: false, message: error.message })
   }
 })
 
-// PUT - Update Opportunity
+// UPDATE Opportunity
 app.put('/api/opportunities/:id', async (req, res) => {
   try {
     if (!salesforceConnection) {
@@ -247,14 +255,11 @@ app.put('/api/opportunities/:id', async (req, res) => {
 
     res.json({ success: result.success, result })
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    })
+    res.status(500).json({ success: false, message: error.message })
   }
 })
 
-// DELETE - Delete Opportunity
+// DELETE Opportunity
 app.delete('/api/opportunities/:id', async (req, res) => {
   try {
     if (!salesforceConnection) {
@@ -270,33 +275,25 @@ app.delete('/api/opportunities/:id', async (req, res) => {
 
     res.json({ success: result.success, result })
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    })
-  }
-}) 
-// GET - Read Leads
-app.get('/api/leads', async (req, res) => {
-  try {
-    if (!salesforceConnection) {
-      return res.status(401).json({
-        success: false,
-        message: 'Please connect Salesforce first'
-      })
-    }
-
-    const result = await salesforceConnection.query(
-      'SELECT Id, FirstName, LastName, Company, Email, Phone, Status FROM Lead ORDER BY CreatedDate DESC LIMIT 20'
-    )
-
-    res.json({ success: true, records: result.records })
-  } catch (error) {
     res.status(500).json({ success: false, message: error.message })
   }
 })
 
-// POST - Create Lead
+// ==============================
+// LEAD CRUD
+// ==============================
+
+// GET Leads
+app.get('/api/leads', (req, res) => {
+  return readRecords(
+    req,
+    res,
+    'Lead',
+    'Id, FirstName, LastName, Company, Email, Phone, Status'
+  )
+})
+
+// CREATE Lead
 app.post('/api/leads', async (req, res) => {
   try {
     if (!salesforceConnection) {
@@ -321,7 +318,7 @@ app.post('/api/leads', async (req, res) => {
   }
 })
 
-// PUT - Update Lead
+// UPDATE Lead
 app.put('/api/leads/:id', async (req, res) => {
   try {
     if (!salesforceConnection) {
@@ -347,7 +344,7 @@ app.put('/api/leads/:id', async (req, res) => {
   }
 })
 
-// DELETE - Delete Lead
+// DELETE Lead
 app.delete('/api/leads/:id', async (req, res) => {
   try {
     if (!salesforceConnection) {
@@ -366,98 +363,160 @@ app.delete('/api/leads/:id', async (req, res) => {
     res.status(500).json({ success: false, message: error.message })
   }
 })
+
+// ==============================
 // CONTACT CRUD
+// ==============================
 
-// Get Contacts
-app.get('/api/contacts', async (req, res) => {
-  try {
-    const result = await salesforceConnection.query(
-      'SELECT Id, FirstName, LastName, Email, Phone, Title, Department FROM Contact ORDER BY CreatedDate DESC LIMIT 20'
-    );
-    res.json({ success: true, records: result.records });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+// GET Contacts
+app.get('/api/contacts', (req, res) => {
+  return readRecords(
+    req,
+    res,
+    'Contact',
+    'Id, FirstName, LastName, Email, Phone, Title, Department'
+  )
+})
 
-// Create Contact
+// CREATE Contact
 app.post('/api/contacts', async (req, res) => {
   try {
-    const result = await salesforceConnection.sobject('Contact').create(req.body);
-    res.json({ success: true, result });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+    if (!salesforceConnection) {
+      return res.status(401).json({
+        success: false,
+        message: 'Please connect Salesforce first'
+      })
+    }
 
-// Update Contact
+    const result = await salesforceConnection
+      .sobject('Contact')
+      .create(req.body)
+
+    res.json({ success: result.success, result })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+})
+
+// UPDATE Contact
 app.put('/api/contacts/:id', async (req, res) => {
   try {
+    if (!salesforceConnection) {
+      return res.status(401).json({
+        success: false,
+        message: 'Please connect Salesforce first'
+      })
+    }
+
     const result = await salesforceConnection.sobject('Contact').update({
       Id: req.params.id,
       ...req.body
-    });
-    res.json({ success: true, result });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+    })
 
-// Delete Contact
+    res.json({ success: result.success, result })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+})
+
+// DELETE Contact
 app.delete('/api/contacts/:id', async (req, res) => {
   try {
-    const result = await salesforceConnection.sobject('Contact').destroy(req.params.id);
-    res.json({ success: true, result });
+    if (!salesforceConnection) {
+      return res.status(401).json({
+        success: false,
+        message: 'Please connect Salesforce first'
+      })
+    }
+
+    const result = await salesforceConnection
+      .sobject('Contact')
+      .destroy(req.params.id)
+
+    res.json({ success: result.success, result })
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: error.message })
   }
-});
+})
+
+// ==============================
 // CASE CRUD
+// ==============================
 
-// Get Cases
-app.get('/api/cases', async (req, res) => {
-  try {
-    const result = await salesforceConnection.query(
-      'SELECT Id, Subject, Status, Origin, Priority, Description FROM Case ORDER BY CreatedDate DESC LIMIT 20'
-    );
-    res.json({ success: true, records: result.records });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+// GET Cases
+app.get('/api/cases', (req, res) => {
+  return readRecords(
+    req,
+    res,
+    'Case',
+    'Id, Subject, Status, Origin, Priority, Description'
+  )
+})
 
-// Create Case
+// CREATE Case
 app.post('/api/cases', async (req, res) => {
   try {
-    const result = await salesforceConnection.sobject('Case').create(req.body);
-    res.json({ success: true, result });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+    if (!salesforceConnection) {
+      return res.status(401).json({
+        success: false,
+        message: 'Please connect Salesforce first'
+      })
+    }
 
-// Update Case
+    const result = await salesforceConnection
+      .sobject('Case')
+      .create(req.body)
+
+    res.json({ success: result.success, result })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+})
+
+// UPDATE Case
 app.put('/api/cases/:id', async (req, res) => {
   try {
+    if (!salesforceConnection) {
+      return res.status(401).json({
+        success: false,
+        message: 'Please connect Salesforce first'
+      })
+    }
+
     const result = await salesforceConnection.sobject('Case').update({
       Id: req.params.id,
       ...req.body
-    });
-    res.json({ success: true, result });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
+    })
 
-// Delete Case
+    res.json({ success: result.success, result })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
+  }
+})
+
+// DELETE Case
 app.delete('/api/cases/:id', async (req, res) => {
   try {
-    const result = await salesforceConnection.sobject('Case').destroy(req.params.id);
-    res.json({ success: true, result });
+    if (!salesforceConnection) {
+      return res.status(401).json({
+        success: false,
+        message: 'Please connect Salesforce first'
+      })
+    }
+
+    const result = await salesforceConnection
+      .sobject('Case')
+      .destroy(req.params.id)
+
+    res.json({ success: result.success, result })
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: error.message })
   }
-});
+})
+
+// Start Server
+const PORT = process.env.PORT || 5000
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
 })

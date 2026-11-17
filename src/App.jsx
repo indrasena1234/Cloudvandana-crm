@@ -38,6 +38,8 @@ function App() {
   const isContact = selectedObject === 'Contact'
   const isCase = selectedObject === 'Case'
 
+  const API_URL = 'https://cloudvandana-crm-2hoa.onrender.com'
+
   const api = isOpportunity
     ? 'opportunities'
     : selectedObject.toLowerCase() + 's'
@@ -46,7 +48,7 @@ function App() {
     setLoading(true)
     setMessage('')
 
-    fetch(`http://localhost:5000/api/${api}`)
+    fetch(`${API_URL}/api/${api}`)
       .then(response => response.json())
       .then(data => {
         if (data.success) {
@@ -70,7 +72,7 @@ function App() {
   }, [selectedObject])
 
   function handleConnectSalesforce() {
-    window.location.href = 'http://localhost:5000/auth/salesforce'
+    window.location.href = `${API_URL}/auth/salesforce`
   }
 
   function resetForm() {
@@ -175,8 +177,8 @@ function App() {
 
     fetch(
       isEditing
-        ? `http://localhost:5000/api/${api}/${editingId}`
-        : `http://localhost:5000/api/${api}`,
+        ? `${API_URL}/api/${api}/${editingId}`
+        : `${API_URL}/api/${api}`,
       {
         method: isEditing ? 'PUT' : 'POST',
         headers: {
@@ -206,7 +208,7 @@ function App() {
       return
     }
 
-    fetch(`http://localhost:5000/api/${api}/${id}`, {
+    fetch(`${API_URL}/api/${api}/${id}`, {
       method: 'DELETE'
     })
       .then(response => response.json())
