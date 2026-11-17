@@ -9,6 +9,9 @@ function App() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState(null)
 
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(false)
+
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [industry, setIndustry] = useState('')
@@ -44,31 +47,42 @@ function App() {
     ? 'opportunities'
     : selectedObject.toLowerCase() + 's'
 
-  function fetchRecords() {
+  function fetchRecords(requestedPage = page) {
     setLoading(true)
     setMessage('')
 
-    fetch(`${API_URL}/api/${api}`)
+    fetch(`${API_URL}/api/${api}?page=${requestedPage}`)
       .then(response => response.json())
       .then(data => {
         if (data.success) {
           setRecords(data.records)
+          setHasMore(data.hasMore)
+          setPage(data.page)
+
           if (data.records.length === 0) {
             setMessage(`No ${selectedObject} records available.`)
           }
         } else {
           setRecords([])
+          setHasMore(false)
           setMessage(data.message || 'Unable to fetch records.')
         }
       })
-      .catch(() => setMessage('Backend connection failed.'))
+      .catch(() => {
+        setRecords([])
+        setHasMore(false)
+        setMessage('Backend connection failed.')
+      })
       .finally(() => setLoading(false))
   }
 
   useEffect(() => {
     setShowForm(false)
     setEditingId(null)
-    fetchRecords()
+    setPage(1)
+    setHasMore(false)
+    setRecords([])
+    fetchRecords(1)
   }, [selectedObject])
 
   function handleConnectSalesforce() {
@@ -223,6 +237,18 @@ function App() {
       .catch(() => setMessage('Backend connection failed.'))
   }
 
+  function handlePrevious() {
+    if (page > 1 && !loading) {
+      fetchRecords(page - 1)
+    }
+  }
+
+  function handleNext() {
+    if (hasMore && !loading) {
+      fetchRecords(page + 1)
+    }
+  }
+
   return (
     <div className="app">
       <header className="header">
@@ -248,7 +274,7 @@ function App() {
             ))}
           </select>
 
-          <button onClick={fetchRecords}>Refresh Records</button>
+          <button onClick={() => fetchRecords()}>Refresh Records</button>
           <button onClick={openAddForm}>Add {selectedObject}</button>
         </div>
 
@@ -458,6 +484,18 @@ function App() {
               ))}
             </tbody>
           </table>
+
+          <div className="pagination">
+            <button onClick={handlePrevious} disabled={page === 1 || loading}>
+              Previous
+            </button>
+
+            <span>Page {page}</span>
+
+            <button onClick={handleNext} disabled={!hasMore || loading}>
+              Next
+            </button>
+          </div>
         </div>
       </main>
     </div>
